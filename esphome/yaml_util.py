@@ -283,38 +283,6 @@ class ESPHomeLoaderMixin:
                 vars = {k: str(v) for k, v in vars.items()}
             return file, vars
 
-        def substitute_vars(config, vars):
-            from esphome.components import substitutions
-            from esphome.const import CONF_DEFAULTS, CONF_SUBSTITUTIONS
-
-            org_subs = None
-            result = config
-            if not isinstance(config, dict):
-                # when the included yaml contains a list or a scalar
-                # wrap it into an OrderedDict because do_substitution_pass expects it
-                result = OrderedDict([("yaml", config)])
-            elif CONF_SUBSTITUTIONS in result:
-                org_subs = result.pop(CONF_SUBSTITUTIONS)
-
-            defaults = {}
-            if CONF_DEFAULTS in result:
-                defaults = result.pop(CONF_DEFAULTS)
-
-            result[CONF_SUBSTITUTIONS] = vars
-            for k, v in defaults.items():
-                if k not in result[CONF_SUBSTITUTIONS]:
-                    result[CONF_SUBSTITUTIONS][k] = v
-
-            # Ignore missing vars that refer to the top level substitutions
-            substitutions.do_substitution_pass(result, None, ignore_missing=True)
-            result.pop(CONF_SUBSTITUTIONS)
-
-            if not isinstance(config, dict):
-                result = result["yaml"]  # unwrap the result
-            elif org_subs:
-                result[CONF_SUBSTITUTIONS] = org_subs
-            return result
-
         if isinstance(node, yaml.nodes.MappingNode):
             file, vars = extract_file_vars(node)
         else:
@@ -480,6 +448,39 @@ def _find_files(directory, pattern):
             if _is_file_valid(basename) and fnmatch.fnmatch(basename, pattern):
                 filename = os.path.join(root, basename)
                 yield filename
+
+
+def substitute_vars(config, vars):
+    from esphome.components import substitutions
+    from esphome.const import CONF_DEFAULTS, CONF_SUBSTITUTIONS
+
+    org_subs = None
+    result = config
+    if not isinstance(config, dict):
+        # when the included yaml contains a list or a scalar
+        # wrap it into an OrderedDict because do_substitution_pass expects it
+        result = OrderedDict([("yaml", config)])
+    elif CONF_SUBSTITUTIONS in result:
+        org_subs = result.pop(CONF_SUBSTITUTIONS)
+
+    defaults = {}
+    if CONF_DEFAULTS in result:
+        defaults = result.pop(CONF_DEFAULTS)
+
+    result[CONF_SUBSTITUTIONS] = vars
+    for k, v in defaults.items():
+        if k not in result[CONF_SUBSTITUTIONS]:
+            result[CONF_SUBSTITUTIONS][k] = v
+
+    # Ignore missing vars that refer to the top level substitutions
+    substitutions.do_substitution_pass(result, None, ignore_missing=True)
+    result.pop(CONF_SUBSTITUTIONS)
+
+    if not isinstance(config, dict):
+        result = result["yaml"]  # unwrap the result
+    elif org_subs:
+        result[CONF_SUBSTITUTIONS] = org_subs
+    return result
 
 
 def is_secret(value):

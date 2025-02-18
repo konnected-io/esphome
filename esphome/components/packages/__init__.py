@@ -1,8 +1,8 @@
 from pathlib import Path
 
-import esphome.config_validation as cv
 from esphome import git, yaml_util
 from esphome.config_helpers import merge_config
+import esphome.config_validation as cv
 from esphome.const import (
     CONF_ESPHOME,
     CONF_FILE,
@@ -14,8 +14,9 @@ from esphome.const import (
     CONF_REFRESH,
     CONF_URL,
     CONF_USERNAME,
+    CONF_VARS,
+    __version__ as ESPHOME_VERSION,
 )
-from esphome.const import __version__ as ESPHOME_VERSION
 from esphome.core import EsphomeError
 
 DOMAIN = CONF_PACKAGES
@@ -81,6 +82,7 @@ BASE_SCHEMA = cv.All(
             cv.Optional(CONF_REFRESH, default="1d"): cv.All(
                 cv.string, cv.source_refresh
             ),
+            cv.Optional(CONF_VARS): dict,
         }
     ),
     cv.has_at_least_one_key(CONF_FILE, CONF_FILES),
@@ -107,6 +109,11 @@ def _process_base_package(config: dict) -> dict:
         password=config.get(CONF_PASSWORD),
     )
     files: list[str] = config[CONF_FILES]
+    vars: dict = config.get(CONF_VARS)
+    if vars:
+        vars = {k: str(v) for k, v in vars.items()}
+    else:
+        vars = {}
 
     def get_packages(files) -> dict:
         packages = {}
@@ -132,7 +139,7 @@ def _process_base_package(config: dict) -> dict:
                             f"Current ESPHome Version is too old to use this package: {ESPHOME_VERSION} < {min_version}"
                         )
 
-                packages[file] = new_yaml
+                packages[file] = yaml_util.substitute_vars(new_yaml, vars)
             except EsphomeError as e:
                 raise cv.Invalid(
                     f"{file} is not a valid YAML file. Please check the file contents.\n{e}"
