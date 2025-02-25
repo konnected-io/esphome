@@ -1,15 +1,8 @@
 import esphome.codegen as cg
+from esphome.components import alarm_control_panel, binary_sensor
 import esphome.config_validation as cv
-from esphome.components import (
-    binary_sensor,
-    alarm_control_panel,
-)
-from esphome.const import (
-    CONF_ID,
-    CONF_BINARY_SENSORS,
-    CONF_INPUT,
-    CONF_RESTORE_MODE,
-)
+from esphome.const import CONF_BINARY_SENSORS, CONF_ID, CONF_INPUT, CONF_RESTORE_MODE
+
 from .. import template_ns
 
 CODEOWNERS = ["@grahambrown11", "@hwstar"]
@@ -25,6 +18,8 @@ CONF_ARMING_NIGHT_TIME = "arming_night_time"
 CONF_ARMING_AWAY_TIME = "arming_away_time"
 CONF_PENDING_TIME = "pending_time"
 CONF_TRIGGER_TIME = "trigger_time"
+CONF_SUPPORTS_ARM_HOME = "supports_arm_home"
+CONF_SUPPORTS_ARM_NIGHT = "supports_arm_night"
 
 
 FLAG_NORMAL = "normal"
@@ -105,6 +100,8 @@ TEMPLATE_ALARM_CONTROL_PANEL_SCHEMA = (
             cv.Optional(CONF_RESTORE_MODE, default="ALWAYS_DISARMED"): cv.enum(
                 RESTORE_MODES, upper=True
             ),
+            cv.Optional(CONF_SUPPORTS_ARM_HOME, default=False): cv.boolean,
+            cv.Optional(CONF_SUPPORTS_ARM_NIGHT, default=False): cv.boolean,
         }
     ).extend(cv.COMPONENT_SCHEMA)
 )
@@ -133,10 +130,14 @@ async def to_code(config):
     if CONF_ARMING_HOME_TIME in config:
         cg.add(var.set_arming_home_time(config[CONF_ARMING_HOME_TIME]))
         supports_arm_home = True
+    if config[CONF_SUPPORTS_ARM_HOME]:
+        supports_arm_home = True
 
     supports_arm_night = False
     if CONF_ARMING_NIGHT_TIME in config:
         cg.add(var.set_arming_night_time(config[CONF_ARMING_NIGHT_TIME]))
+        supports_arm_night = True
+    if config[CONF_SUPPORTS_ARM_NIGHT]:
         supports_arm_night = True
 
     for sensor in config.get(CONF_BINARY_SENSORS, []):
